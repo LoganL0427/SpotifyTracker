@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Spotify App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            background-color: black;
+            color: white;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #controls button {
+            border-radius: 25%;
+            width: 140px;
+            height: 140px;
+            aspect-ratio: 1/1;
+            box-sizing: border-box;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color;
+            background-color: white;
+            font-size: 2rem;
+            padding: 1rem;
+            margin: 1rem;
+            border: 1px solid white;
+        }
+
+        #controls button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.84);
+        }
+
+        #controls button:active {
+            background-color: rgba(255, 255, 255, 0.709);
+        }
+
+        #controls button img {
+            width: 50px;
+            height: 50px;
+        }
+
+        #album-art-container {
+            justify-content: center;
+            display: flex;
+            align-items: center;
+        }
+
+        #album-art {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 15%;
+        }
+
+        #song-details {
+            justify-content: center;
+            align-items: center;
+            display: flex;
+            flex-direction: column;
+            font-size: 30px;
+        }
+
+        h2 {
+            justify-content: center;
+            align-items: center;
+            display: flex;
+        }
+
+        #data-buttons-container {
+            justify-content: center;
+            align-items: center;
+            display: flex;
+        }
+
+        #data-buttons {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        #data-buttons button {
+            padding: 2rem;
+            font-size: 30px;
+            border-radius: 25%;
+            background-color: white;
+            border: 1px solid white;
+            color: black;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color;
+        }
+
+        #data-buttons button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            background-color: rgba(255, 255, 255, 0.84);
+        }
+
+        #data-buttons button:active {
+            background-color: rgba(255, 255, 255, 0.709);
+        }
+
+        .track {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .track img {
+            width: 70px;
+            height: 70px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .track div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .artist {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .artist img {
+            width: 70px;
+            height: 70px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .artist div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .loading-text {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 50px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="app">
+        <section id="currently-playing">
+            <h2>Currently Playing</h2>
+            <div id="track-info">
+                <div id="album-art-container">
+                    <img id="album-art" src="" alt="Album Cover" />
+                </div>
+                <div id="song-details">
+                    <h3 id="song-name">Song Name</h3>
+                    <p id="artist-name">Artist Name</p>
+                    <p id="album-name">Album Name</p>
+                </div>
+            </div>
+            <div id="controls">
+                <button id="play-pause"><img src="images/play-button.png" alt="Play" /></button>
+                <button id="skip"><img src="images/fast-forward.png" alt="Skip" /></button>
+                <button id="restart"><img src="images/backward.png" alt="Previous" /></button>
+            </div>
+        </section>
+
+        <nav id="data-buttons-container">
+            <div id="data-buttons">
+                <button data-section="recently-played">Recently Played</button>
+                <button data-section="top-artists">Top Artists</button>
+                <button data-section="top-tracks">Top Tracks</button>
+            </div>
+        </nav>
+
+        <section id="data-section">
+
+        </section>
+    </div>
+
+    <script>
+        function getAccessTokenFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('access_token');
+        }
+        const accessToken = getAccessTokenFromUrl();
+
+        if (!accessToken) {
+            window.location.href = '/login';
+        }
+
+        // --- Elements from DOM ---
+        const songNameEl = document.getElementById('song-name');
+        const artistNameEl = document.getElementById('artist-name');
+        const albumNameEl = document.getElementById('album-name');
+        const albumArtEl = document.getElementById('album-art');
+
+        const playPauseBtn = document.getElementById('play-pause');
+        let isPlaying = false;
+        const skipBtn = document.getElementById('skip');
+        const restartBtn = document.getElementById('restart');
+
+        const dataButtons = document.querySelectorAll('#data-buttons button');
+        const dataSection = document.getElementById('data-section');
+
+        loadCurrentlyPlaying()
+
+        setInterval(loadCurrentlyPlaying, 5000);
+
+        function fetchWithAuth(url, options = {}) {
+            options.headers = {
+                ...options.headers,
+                Authorization: `Bearer ${accessToken}`
+            };
+            return fetch(url, options);
+        }
+
+        async function loadCurrentlyPlaying() {
+            try {
+                const res = await fetchWithAuth('/currently-playing');
+                if (!res.ok) throw new Error('Failed to load currently playing track.');
+
+                const data = await res.json();
+
+                if (data.playing === false) {
+                    songNameEl.textContent = "No song playing.";
+                    artistNameEl.textContent = '';
+                    albumNameEl.textContent = '';
+                    albumArtEl.src = '';
+
+                    isPlaying = false;
+                    playPauseBtn.querySelector('img').src = 'images/play-button.png';
+                    return;
+                }
+
+                songNameEl.textContent = data.song || 'Unknown Song';
+                artistNameEl.textContent = data.artist || 'Unknown Artist';
+                albumNameEl.textContent = data.album || 'Unknown Album';
+                albumArtEl.src = data.albumImage || '';
+
+                isPlaying = true;
+                playPauseBtn.querySelector('img').src = 'images/pause.png';
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        async function controlPlayback(method) {
+            try {
+                const res = await fetchWithAuth(`/${method}`, {
+                    method: method === 'play' || method === 'pause' ? 'PUT' : 'POST'
+                });
+                if (!res.ok) throw new Error(`${method} failed.`);
+                if (method === 'play' || method === 'pause' || method === 'next' || method === 'previous') {
+                    await loadCurrentlyPlaying();
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function loadDataSection(type) {
+            dataSection.innerHTML = `
+                <p class="loading-text"><strong>Loading...</strong></p>
+            `
+
+            let endpoint = '';
+            if (type === 'recently-played') endpoint = '/recently-played';
+            else if (type === 'top-artists') endpoint = '/top-artists';
+            else if (type === 'top-tracks') endpoint = '/top/tracks';
+            else {
+                dataSection.textContent = 'Unknown section';
+                return;
+            }
+
+            try {
+                const res = await fetchWithAuth(endpoint);
+                if (!res.ok) throw new Error('Failed to load data');
+
+                const data = await res.json();
+
+                // Clear data section again to replace loading text
+                dataSection.innerHTML = '';
+
+                // Render based on type
+                if (type === 'recently-played' || type === 'top-tracks') {
+                    // Show list of tracks with name, artist(s), album art
+                    data.forEach(track => {
+                        const trackDiv = document.createElement('div');
+                        trackDiv.classList.add('track');
+
+                        trackDiv.innerHTML = `
+                        <img src="${track.albumImage || ''}" alt="Album Art" width="50" height="50" />
+                        <div>
+                            <strong>${track.name}</strong><br />
+                            <em>${track.artists}</em>
+                        </div>
+                        `;
+                        dataSection.appendChild(trackDiv);
+                    });
+                } else if (type === 'top-artists') {
+                    // Show list of artists with name, genres, image
+                    data.forEach(artist => {
+                        const artistDiv = document.createElement('div');
+                        artistDiv.classList.add('artist');
+
+                        artistDiv.innerHTML = `
+                        <img src="${artist.image || ''}" alt="Artist Image" width="50" height="50" />
+                        <div>
+                            <strong>${artist.name}</strong><br />
+                            <em>${artist.genres.join(', ')}</em>
+                        </div>
+                        `;
+                        dataSection.appendChild(artistDiv);
+                    });
+                }
+            } catch (err) {
+                dataSection.textContent = 'Error loading data';
+                console.error(err);
+            }
+        }
+
+        // --- Event listeners for control buttons ---
+        playPauseBtn.addEventListener('click', async () => {
+            playPauseBtn.disabled = true;
+
+            try {
+                if (isPlaying) {
+                    // Optimistic UI update to paused
+                    isPlaying = false;
+                    playPauseBtn.querySelector('img').src = 'images/play-button.png';
+
+                    const res = await fetchWithAuth('/pause', { method: 'PUT' });
+                    if (!res.ok) throw new Error('Pause failed.');
+
+                } else {
+                    // Optimistic UI update to playing
+                    isPlaying = true;
+                    playPauseBtn.querySelector('img').src = 'images/pause.png';
+
+                    const res = await fetchWithAuth('/play', { method: 'PUT' });
+                    if (!res.ok) throw new Error('Play failed.');
+                }
+
+            } catch (error) {
+                console.error(error);
+                // Sync UI state to server if error happens
+                await loadCurrentlyPlaying();
+            }
+
+            playPauseBtn.disabled = false;
+        });
+        skipBtn.addEventListener('click', () => controlPlayback('next'));
+        restartBtn.addEventListener('click', () => controlPlayback('previous'));
+
+        dataButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const section = button.getAttribute('data-section');
+                loadDataSection(section);
+            });
+        });
+    </script>
+</body>
+
+</html>
